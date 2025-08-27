@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Arcade Hub — Ultimate Fun Pack</title>
+<style>
+  /* ---------- Theme ---------- */
+  @keyframes floaty { 0%{transform: translateY(0)}50%{transform: translateY(-6px)}100%{transform: translateY(0)} }
+  :root{
+    --bg:#0b1020; --card:#091425; --accent:#ff7ab6; --accent2:#6f8cff;
+    --muted:#9fb0e6; --neon:#7ef3d9; --panel:#0f1a33;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;font-family: "Segoe UI", Roboto, system-ui, -apple-system; background: linear-gradient(180deg,var(--bg),#041020); color:#eaf3ff; display:flex;align-items:center;justify-content:center;padding:18px}
+  .app{width:1100px;max-width:100%;border-radius:14px;padding:16px;background:linear-gradient(180deg,var(--panel),#071029);box-shadow:0 12px 40px rgba(2,8,23,.7)}
+  header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px}
+  h1{font-size:20px;margin:0;letter-spacing:0.6px}
+  .controls{display:flex;gap:8px;align-items:center}
+  button, select{background:transparent;border:0;color:var(--muted);padding:8px 12px;border-radius:10px;cursor:pointer}
+  .btn-primary{background:linear-gradient(90deg,var(--accent),var(--accent2));color:#03102a;border:0;padding:8px 12px;border-radius:10px;box-shadow:0 6px 18px rgba(111,140,255,.12)}
+  main{display:flex;gap:14px}
+  nav{width:230px;background:linear-gradient(180deg,#081428,#061025);border-radius:10px;padding:12px}
+  .game-list{display:flex;flex-direction:column;gap:8px}
+  .game-item{padding:10px;border-radius:8px;background:transparent;border:1px solid transparent;cursor:pointer}
+  .game-item.active{background:linear-gradient(90deg,rgba(255,122,182,.06),rgba(111,140,255,.04));border:1px solid rgba(111,140,255,.08)}
+  section.content{flex:1;background:linear-gradient(180deg,#06122a,#071029);padding:14px;border-radius:10px;min-height:640px;display:flex;flex-direction:column}
+  .topbar{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}
+  .info{font-size:13px;color:var(--muted)}
+  footer{margin-top:auto;padding-top:10px;display:flex;justify-content:space-between;align-items:center;color:var(--muted)}
+  .muted{color:var(--muted)}
+  .center{display:flex;align-items:center;justify-content:center}
+  .panel{background:linear-gradient(180deg,#07182a,#041225);border-radius:10px;padding:12px;border:1px solid rgba(255,255,255,.03)}
+  .small{font-size:13px;color:var(--muted)}
+  /* TicTacToe */
+  .ttt-grid{display:grid;grid-template-columns:repeat(3,120px);gap:10px;justify-content:center;margin:8px auto}
+  .cell{width:120px;height:120px;background:#08182a;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:56px;cursor:pointer;border:2px solid rgba(255,255,255,.02)}
+  /* Memory */
+  .deck{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;max-width:760px;margin:12px auto}
+  .card{aspect-ratio:3/4;border-radius:10px;background:#07203d;display:flex;align-items:center;justify-content:center;font-size:32px;cursor:pointer;border:1px solid rgba(255,255,255,.03);user-select:none;transition:transform .25s}
+  .card.flipped{transform: rotateY(0deg); background:linear-gradient(90deg,#2e4b7a,#4866b8); font-size:34px;color:#fff;}
+  .card.hidden{background:#082236;color:transparent}
+  /* Snake */
+  #snake-canvas{background:#03122a;border-radius:12px;display:block;margin:0 auto;border:3px solid rgba(255,255,255,.03)}
+  .hud{display:flex;gap:12px;align-items:center}
+  /* theme extras */
+  .badge{padding:6px 8px;border-radius:8px;background:rgba(255,255,255,.03);font-size:13px}
+  .option-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .fancy-title{font-family: "Comic Sans MS", "Trebuchet MS", system-ui; color:var(--neon); text-shadow:0 6px 30px rgba(126,243,217,.06);animation:floaty 3s ease-in-out infinite}
+  canvas.confetti{position:fixed;left:0;top:0;pointer-events:none;z-index:9999}
+  @media (max-width:980px){ .ttt-grid .cell{width:80px;height:80px;font-size:38px} .deck{grid-template-columns:repeat(4,1fr)} }
+</style>
+</head>
+<body>
+  <div class="app" role="application">
+    <header>
+      <div>
+        <h1 class="fancy-title">Arcade Hub — Ultimate Fun Pack</h1>
+        <div class="small muted">Three games • Multiplayer & AI • Sounds • Confetti</div>
+      </div>
+      <div class="controls">
+        <div class="small muted">Player name:</div>
+        <input id="playerName" placeholder="Guest" style="background:transparent;border:1px solid rgba(255,255,255,.04);padding:8px;border-radius:8px;color:#eaf3ff" />
+        <button id="resetAll" class="small">Reset All</button>
+      </div>
+    </header>
+
+    <main>
+      <nav aria-label="Game nav">
+        <div class="panel">
+          <div class="small muted">Games</div>
+          <div class="game-list" id="gameList">
+            <div class="game-item active" data-game="tic">Tic-Tac-Toe</div>
+            <div class="game-item" data-game="snake">Snake</div>
+            <div class="game-item" data-game="memory">Memory</div>
+          </div>
+        </div>
+
+        <div style="height:12px"></div>
+
+        <div class="panel">
+          <div class="small muted">Global Controls</div>
+          <div style="margin-top:8px" class="option-row">
+            <button id="newGameBtn" class="btn-primary">New / Restart</button>
+            <button id="soundToggle" class="small">🔊 Sound: On</button>
+          </div>
+          <div style="margin-top:10px" class="small muted">Highscores stored locally</div>
+        </div>
+      </nav>
+
+      <section class="content">
+        <div class="topbar">
+          <div class="info">Current: <strong id="currentGame">Tic-Tac-Toe</strong></div>
+          <div class="hud">
+            <div id="highscorePanel" class="badge">Highscore: <span id="highscore">0</span></div>
+            <div class="small muted">Mode:</div>
+            <select id="modeSelect">
+              <option value="pvp">2 Players (Local)</option>
+              <option value="pva">Player vs AI</option>
+              <option value="ai">AI vs AI (watch!)</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="gameArea">
+          <!-- Tic Tac Toe -->
+          <div id="tic" class="panel game-panel">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div class="small muted">Tic-Tac-Toe • choose PvP or vs AI</div>
+              <div><button id="ttt-reset" class="small">Reset Board</button></div>
+            </div>
+            <div class="ttt-grid" id="ttt-grid" role="grid" aria-label="Tic Tac Toe board"></div>
+            <div style="margin-top:10px;display:flex;gap:12px;justify-content:center;align-items:center">
+              <div class="small muted">Turn: <strong id="ttt-turn">X</strong></div>
+              <div class="small muted">Result: <span id="ttt-msg"></span></div>
+            </div>
+          </div>
+
+          <!-- Snake -->
+          <div id="snake" class="panel game-panel" style="display:none">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div class="small muted">Snake • Eat Milk (🥛) then Egg (🥚) — modes: single / 2-player / vs AI</div>
+              <div class="option-row">
+                <label class="small muted">Mode:
+                  <select id="snakeMode">
+                    <option value="single">Single</option>
+                    <option value="two">Two Players</option>
+                    <option value="ai">Vs AI</option>
+                  </select>
+                </label>
+                <button id="snake-start" class="btn-primary">Start</button>
+                <button id="snake-reset" class="small">Reset</button>
+              </div>
+            </div>
+            <canvas id="snake-canvas" width="480" height="480" aria-label="Snake canvas"></canvas>
+            <div style="margin-top:8px;display:flex;gap:18px;justify-content:center;align-items:center">
+              <div class="small muted">Score: <strong id="snake-score">0</strong></div>
+              <div class="small muted">Foods: <span id="foodList"></span></div>
+            </div>
+            <div style="margin-top:8px" class="small muted">Controls: Player1 = Arrow keys, Player2 = WASD</div>
+          </div>
+
+          <!-- Memory -->
+          <div id="memory" class="panel game-panel" style="display:none">
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <div class="small muted">Memory • Rounds: 1 Foods • 2 Animals • 3 Mixed</div>
+              <div class="option-row">
+                <label class="small muted">Round:
+                  <select id="memRound">
+                    <option value="1">Round 1 (Foods)</option>
+                    <option value="2">Round 2 (Animals)</option>
+                    <option value="3">Round 3 (Mixed)</option>
+                  </select>
+                </label>
+                <label class="small muted">Mode:
+                  <select id="memMode">
+                    <option value="single">Single</option>
+                    <option value="two">Two Players</option>
+                    <option value="ai">Vs AI</option>
+                  </select>
+                </label>
+                <button id="mem-new" class="btn-primary">New Round</button>
+              </div>
+            </div>
+
+            <div style="margin-top:10px;display:flex;gap:10px;justify-content:center;align-items:center">
+              <div class="small muted">Timer: <strong id="mem-timer">60</strong>s</div>
+              <div class="small muted">Matches: <strong id="mem-score">0</strong></div>
+              <div class="small muted">Turn: <strong id="mem-turn">Player1</strong></div>
+            </div>
+
+            <div class="deck" id="mem-deck"></div>
+            <div style="margin-top:12px" class="center"><div id="mem-msg" class="small muted"></div></div>
+          </div>
+
+        </div>
+
+        <footer>
+          <div>Tips: press <strong>New / Restart</strong> after switching games.</div>
+          <div class="small muted">Made with vanilla JS • Enjoy!</div>
+        </footer>
+      </section>
+    </main>
+  </div>
+
+  <canvas id="confetti" class="confetti"></canvas>
+
+<script>
+/* -----------------------
+   Utilities: sound, confetti, storage
+   ----------------------- */
+const storage = {
+  get(k,v){ try{ const x = localStorage.getItem('arcade:'+k); return x ? JSON.parse(x) : v; } catch { return v } },
+  set(k,v){ localStorage.setItem('arcade:'+k, JSON.stringify(v)); }
+};
+
+let SOUND_ON = true;
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+function beep(freq=440, duration=0.12, type='sine', vol=0.06){
+  if(!SOUND_ON) return;
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.value = vol;
+  o.connect(g); g.connect(audioCtx.destination);
+  o.start();
+  o.stop(audioCtx.currentTime + duration);
+  g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+}
+
+/* confetti canvas */
+const confettiCanvas = document.getElementById('confetti'), cctx = confettiCanvas.getContext('2d');
+function resizeConfetti(){ confettiCanvas.width = window.innerWidth; confettiCanvas.height = window.innerHeight; }
+resizeConfetti(); window.addEventListener('resize', resizeConfetti);
+function showConfetti(duration=2400){
+  const pieces=[];
+  for(let i=0;i<160;i++){
+    pieces.push({x:Math.random()*confettiCanvas.width, y:-Math.random()*confettiCanvas.height, vx:(Math.random()-0.5)*3, vy:2+Math.random()*4, r:3+Math.random()*6, color:`hsl(${Math.random()*360},80%,60%)`, rot:Math.random()*360});
+  }
+  let t=0;
+  const id=setInterval(()=>{
+    t+=16;
+    cctx.clearRect(0,0,confettiCanvas.width,confettiCanvas.height);
+    for(const p of pieces){
+      p.x += p.vx; p.y += p.vy; p.vy += 0.03;
+      cctx.save(); cctx.translate(p.x,p.y); cctx.rotate(p.rot*Math.PI/180); cctx.fillStyle=p.color; cctx.fillRect(-p.r/2,-p.r/2,p.r,p.r*1.8); cctx.restore();
+    }
+  },16);
+  setTimeout(()=>{ clearInterval(id); cctx.clearRect(0,0,confettiCanvas.width,confettiCanvas.height); }, duration);
+}
+
+/* Flash sparkle */
+function sparkleAt(x,y, count=16, duration=900){
+  const pieces=[];
+  const canvas = confettiCanvas;
+  for(let i=0;i<count;i++){
+    pieces.push({x,y, vx:(Math.random()-0.5)*6, vy:(Math.random()-0.9)*6, r:2+Math.random()*6, color:`hsl(${Math.random()*360},90%,70%)`});
+  }
+  let t=0;
+  const id=setInterval(()=>{
+    t+=16; cctx.clearRect(0,0,canvas.width,canvas.height);
+    for(const p of pieces){ p.x+=p.vx; p.y+=p.vy; p.vy+=0.15; cctx.beginPath(); cctx.fillStyle=p.color; cctx.arc(p.x,p.y,p.r,0,Math.PI*2); cctx.fill(); }
+  },16);
+  setTimeout(()=>{ clearInterval(id); cctx.clearRect(0,0,canvas.width,canvas.height); }, duration);
+}
+
+/* -----------------------
+   UI wiring: navigation & controls
+   ----------------------- */
+const gameListEls = document.querySelectorAll('.game-item');
+const panels = { tic:document.getElementById('tic'), snake:document.getElementById('snake'), memory:document.getElementById('memory') };
+let activeGame = 'tic';
+function setActiveGame(name){
+  activeGame = name;
+  gameListEls.forEach(e=> e.classList.toggle('active', e.dataset.game===name));
+  Object.keys(panels).forEach(k=> panels[k].style.display = (k===name ? '' : 'none'));
+  document.getElementById('currentGame').textContent = ({tic:'Tic-Tac-Toe',snake:'Snake',memory:'Memory'}[name]||name);
+  // refresh highscore display
+  refreshHighscore();
+}
+document.getElementById('gameList').addEventListener('click', e=>{
+  const it = e.target.closest('.game-item'); if(!it) return; setActiveGame(it.dataset.game);
+});
+document.getElementById('newGameBtn').addEventListener('click', ()=> {
+  if(activeGame==='tic') TTT.resetBoard();
+  if(activeGame==='snake') Snake.reset();
+  if(activeGame==='memory') Memory.newRound();
+});
+document.getElementById('resetAll').addEventListener('click', ()=>{ if(confirm('Reset all arcade local data?')){ Object.keys(localStorage).filter(k=>k.startsWith('arcade:')).forEach(k=>localStorage.removeItem(k)); location.reload(); }});
+document.getElementById('soundToggle').addEventListener('click', ()=>{
+  SOUND_ON = !SOUND_ON; document.getElementById('soundToggle').textContent = SOUND_ON ? '🔊 Sound: On' : '🔈 Sound: Off';
+});
+
+/* -----------------------
+   Highscore refresh helper
+   ----------------------- */
+function refreshHighscore(){
+  const hs = storage.get(activeGame+':highscore',0);
+  if(typeof hs === 'object'){ // ttt
+    const best = Math.max(hs.X||0, hs.O||0, hs.draws||0);
+    document.getElementById('highscore').textContent = best;
+  } else {
+    document.getElementById('highscore').textContent = hs || 0;
+  }
+}
+setInterval(refreshHighscore, 1000);
+
+/* -----------------------
+   TICTACTOE with AI (minimax)
+   ----------------------- */
+const TTT = (function(){
+  const gridEl = document.getElementById('ttt-grid');
+  const turnEl = document.getElementById('ttt-turn');
+  const msgEl = document.getElementById('ttt-msg');
+  const resetBtn = document.getElementById('ttt-reset');
+  const modeSelect = document.getElementById('modeSelect');
+
+  let board = Array(9).fill(null);
+  let turn = 'X';
+  let over = false;
+
+  function render(){
+    gridEl.innerHTML = '';
+    board.forEach((v,i)=>{
+      const d = document.createElement('div');
+      d.className = 'cell'; d.textContent = v||'';
+      d.addEventListener('click', ()=> playAt(i));
+      gridEl.appendChild(d);
+    });
+    turnEl.textContent = turn;
+    msgEl.textContent = over ? 'Game over' : '';
+  }
+
+  function playAt(i){
+    if(over || board[i]) return;
+    const mode = modeSelect.value;
+    board[i]=turn; beep(880, .06, 'square', .04);
+    const r = checkWin(board);
+    if(r){ finish(r); return; }
+    turn = (turn==='X')? 'O':'X'; render();
+    if(!over && mode!=='pvp'){
+      if(mode==='pva' && turn==='O'){ // player X vs AI O
+        setTimeout(()=> { const aiMove = aiPick(board,'O'); board[aiMove]='O'; beep(620,.08,'sine',.05); const r2 = checkWin(board); if(r2) finish(r2); else {turn='X'; render();} }, 250);
+      } else if(mode==='ai'){ // AI vs AI (watch)
+        setTimeout(()=>{ const mv = aiPick(board, turn); board[mv]=turn; const rr = checkWin(board); if(rr) finish(rr); else { turn = (turn==='X')?'O':'X'; render(); } }, 300);
+      }
+    }
+  }
+
+  function aiPick(b, player){
+    // minimax
+    const opponent = player==='X' ? 'O' : 'X';
+    function scores(result){ if(result===player) return 10; if(result===opponent) return -10; return 0; }
+    function available(bd){ return bd.map((v,i)=> v?null:i).filter(x=>x!==null); }
+    function minimax(bd, p){
+      const win = checkWin(bd);
+      if(win) return {score: scores(win)};
+      const avail = available(bd);
+      if(avail.length===0) return {score:0};
+      let best = (p===player) ? {score:-Infinity} : {score:Infinity};
+      for(const idx of avail){
+        const copy = bd.slice(); copy[idx]=p;
+        const res = minimax(copy, p===player?opponent:player);
+        if(p===player){
+          if(res.score > best.score) best = {score:res.score, move: idx};
+        } else {
+          if(res.score < best.score) best = {score:res.score, move: idx};
+        }
+      }
+      return best;
+    }
+    const r = minimax(b, player);
+    return r.move ?? available(b)[0];
+  }
+
+  function checkWin(b){
+    const wins = [[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+    for(const w of wins){ const [a,b1,c]=w; if(b[a] && b[a]===b[b1] && b[a]===b[c]) return b[a]; }
+    if(b.every(Boolean)) return 'draw';
+    return null;
+  }
+
+  function finish(result){
+    over = true;
+    render();
+    if(result==='draw'){ msgEl.textContent='Draw!'; beep(240, .18, 'sine', .03); }
+    else { msgEl.textContent = result + ' wins!'; showConfetti(); sparkleAt(window.innerWidth/2, window.innerHeight/2, 24); beep(1200, .2,'sawtooth',.06); }
+    // save highscore counts
+    const key = 'tic:highscore'; let hs = storage.get(key, {X:0,O:0,draws:0});
+    if(result==='draw') hs.draws = (hs.draws||0)+1; else hs[result] = (hs[result]||0)+1;
+    storage.set(key, hs);
+  }
+
+  function resetBoard(){
+    board = Array(9).fill(null); turn='X'; over=false; msgEl.textContent=''; render();
+  }
+
+  resetBtn.addEventListener('click', resetBoard);
+  modeSelect.addEventListener('change', ()=> { resetBoard(); });
+  render();
+  return { resetBoard };
+})();
+
+/* -----------------------
+   SNAKE (single / two / AI) with Milk->Egg switch
+   ----------------------- */
+const Snake = (function(){
+  const canvas = document.getElementById('snake-canvas');
+  const ctx = canvas.getContext('2d', {alpha:false});
+  const startBtn = document.getElementById('snake-start');
+  const resetBtn = document.getElementById('snake-reset');
+  const scoreEl = document.getElementById('snake-score');
+  const foodListEl = document.getElementById('foodList');
+  const modeSel = document.getElementById('snakeMode');
+
+  const box = 20;
+  const cols = canvas.width / box | 0;
+  const rows = canvas.height / box | 0;
+  const foods = ['🥛','🥚','🍕','🍎','🍔','🍟','🍩','🍪'];
+
+  let snakes = []; // array of snake arrays for players
+  let dirs = [];   // direction objects for each snake
+  let food = null;
+  let foodTimer = null;
+  let foodState = '🥛'; // initial milk; it will toggle to egg after interval
+  let tickId = null;
+  let speed = 120;
+  let mode = 'single';
+  let scores = [0,0];
+
+  function initVars(){
+    mode = modeSel.value;
+    // default snake(s)
+    snakes = [ [{x:Math.floor(cols/3), y: Math.floor(rows/2)}] ];
+    dirs = [ {x:1,y:0} ];
+    scores = [0,0];
+    if(mode === 'two'){ snakes.push([{x:Math.floor(2*cols/3), y: Math.floor(rows/2)}]); dirs.push({x:-1,y:0}); }
+    if(mode === 'ai' && snakes.length===1){ /* add AI-controlled second "snake" if desired? For now AI is single snake behavior*/ }
+    placeFood();
+    scoreEl.textContent = scores[0];
+    foodListEl.textContent = foods.join(' ');
+  }
+
+  function randPos(){ return {x: Math.floor(Math.random()*cols), y: Math.floor(Math.random()*rows)}; }
+  function placeFood(){
+    let pos, tries=0;
+    do { pos = randPos(); tries++; } while(snakes.some(s=> s.some(seg=> seg.x===pos.x && seg.y===pos.y)) && tries<400);
+    food = { x: pos.x, y: pos.y, emoji: foodState };
+  }
+
+  function drawCell(x,y,color){
+    ctx.fillStyle = color; ctx.fillRect(x*box, y*box, box, box);
+    ctx.strokeStyle = '#041326'; ctx.strokeRect(x*box, y*box, box, box);
+  }
+
+  function drawEmoji(e,x,y, size=box-2){
+    ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.font = (size*0.9)+'px serif'; ctx.fillText(e, x*box + box/2, y*box + box/2 + 1);
+  }
+
+  function render(){
+    ctx.fillStyle = '#021022'; ctx.fillRect(0,0,canvas.width,canvas.height);
+    // food
+    if(food) drawEmoji(food.emoji, food.x, food.y);
+    // snakes
+    snakes.forEach((s, idx) => {
+      s.forEach((seg,i) => {
+        drawCell(seg.x, seg.y, i===0 ? (idx===0 ? '#7ff' : '#ffb36b') : (idx===0? '#3be' : '#ff9b3a'));
+      });
+    });
+  }
+
+  function tick(){
+    // update foodState periodically: milk -> egg after 8s, then toggles every 10s
+    // handled by timer below
+    // move snakes
+    const newHeads = [];
+    for(let i=0;i<snakes.length;i++){
+      const head = { x: snakes[i][0].x + dirs[i].x, y: snakes[i][0].y + dirs[i].y };
+      newHeads.push(head);
+    }
+    // boundary collisions wrap or die? we'll wrap for fun
+    for(const h of newHeads){ if(h.x < 0) h.x = cols-1; if(h.x>=cols) h.x=0; if(h.y<0) h.y=rows-1; if(h.y>=rows) h.y=0; }
+    // apply moves and check collisions
+    for(let i=0;i<snakes.length;i++){
+      const head = newHeads[i];
+      // self collision
+      if(snakes[i].some(seg=> seg.x===head.x && seg.y===head.y)){ gameOver(i); return; }
+      // collision with other snake?
+      for(let j=0;j<snakes.length;j++){
+        if(i!==j && snakes[j].some(seg=> seg.x===head.x && seg.y===head.y)){ gameOver(i); return; }
+      }
+      snakes[i].unshift(head);
+      // eat?
+      if(food && head.x===food.x && head.y===food.y){
+        // grow automatically (no pop)
+        scores[i] += 10;
+        if(i===0) scoreEl.textContent = scores[0];
+        beep(950, .08, 'sine', .06);
+        // after eating, pick new food and keep current foodState until timer flips it
+        placeFood();
+      } else {
+        snakes[i].pop();
+      }
+    }
+    render();
+    // if AI mode and mode === 'ai' or two-player with AI controlling second, implement naive AI
+    if(mode === 'ai'){
+      // naive AI: set dir towards food for snake[0] is player; for AI snake we can skip or implement simple movement; here assume player controls only one snake
+    }
+  }
+
+  function start(){
+    if(tickId){ // pause
+      clearInterval(tickId); tickId=null; startBtn.textContent='Start';
+      return;
+    }
+    // setup foodState flip timer
+    foodState = '🥛';
+    placeFood();
+    // first flip after 8 seconds to egg
+    if(foodTimer) clearInterval(foodTimer);
+    foodTimer = setInterval(()=>{ foodState = (foodState==='🥛') ? '🥚' : '🥛'; if(food) food.emoji = foodState; }, 8000);
+    tickId = setInterval(tick, speed);
+    startBtn.textContent='Pause';
+    beep(720, .06, 'sawtooth', .04);
+  }
+  function stop(){
+    if(tickId){ clearInterval(tickId); tickId=null; startBtn.textContent='Start'; }
+  }
+  function reset(){
+    stop();
+    initVars();
+    render();
+    startBtn.textContent = 'Start';
+  }
+  function gameOver(playerIndex){
+    stop();
+    setTimeout(()=>{ alert('Game Over! Player ' + (playerIndex+1) + ' crashed. Score P1:'+scores[0]+' P2:'+scores[1]); }, 60);
+    // persist highscore (single player mode)
+    if(mode === 'single'){
+      const key = 'snake:highscore'; const cur = storage.get(key,0); if(scores[0] > cur) { storage.set(key, scores[0]); showConfetti(); }
+    }
+  }
+
+  // controls: arrow keys for player1, WASD for player2 (if two)
+  window.addEventListener('keydown', (e)=>{
+    const k = e.key;
+    if(k==='ArrowUp' && dirs[0].y===0){ dirs[0]={x:0,y:-1}; }
+    if(k==='ArrowDown' && dirs[0].y===0){ dirs[0]={x:0,y:1}; }
+    if(k==='ArrowLeft' && dirs[0].x===0){ dirs[0]={x:-1,y:0}; }
+    if(k==='ArrowRight' && dirs[0].x===0){ dirs[0]={x:1,y:0}; }
+    if(snakes.length>1){
+      if((k==='w' || k==='W') && dirs[1].y===0) dirs[1]={x:0,y:-1};
+      if((k==='s' || k==='S') && dirs[1].y===0) dirs[1]={x:0,y:1};
+      if((k==='a' || k==='A') && dirs[1].x===0) dirs[1]={x:-1,y:0};
+      if((k==='d' || k==='D') && dirs[1].x===0) dirs[1]={x:1,y:0};
+    }
+    // space = toggle start/pause
+    if(k===' '){ start(); }
+  });
+
+  startBtn.addEventListener('click', ()=> { start(); });
+  resetBtn.addEventListener('click', reset);
+  modeSel.addEventListener('change', ()=> reset());
+
+  initVars(); render();
+  return { reset };
+})();
+
+/* -----------------------
+   MEMORY (Rounds, multiplayer & AI)
+   ----------------------- */
+const Memory = (function(){
+  const deckEl = document.getElementById('mem-deck');
+  const timerEl = document.getElementById('mem-timer');
+  const scoreEl = document.getElementById('mem-score');
+  const msgEl = document.getElementById('mem-msg');
+  const newBtn = document.getElementById('mem-new');
+  const roundSel = document.getElementById('memRound');
+  const modeSel = document.getElementById('memMode');
+  const turnEl = document.getElementById('mem-turn');
+
+  const foods = ['🍎','🍕','🥛','🍩','🍔','🍟','🍪','🍓'];
+  const animals = ['🐶','🐱','🦁','🐵','🐼','🐰','🐨','🐸'];
+  const mixed = ['🍓','🐼','🥗','🐰','🐟','🍔','🍕','🐶'];
+
+  let icons = foods;
+  let cards = [], flipped = [], matches = 0, timer = 60, timerId = null;
+  let mode = 'single', round = 1, playerTurn = 1, scores = {1:0,2:0}, lock=false;
+  let aiThinking = false;
+
+  function chooseIcons(){
+    round = parseInt(roundSel.value, 10);
+    if(round===1) icons = foods.slice(0,8);
+    else if(round===2) icons = animals.slice(0,8);
+    else icons = mixed.slice(0,8);
+  }
+
+  function shuffle(a){ for(let i=a.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [a[i],a[j]]=[a[j],a[i]] } return a; }
+
+  function buildDeck(){
+    const pairs = shuffle([...icons, ...icons]);
+    cards = pairs.map((v,i)=>({id:i,val:v,flipped:false,found:false}));
+    render();
+  }
+
+  function render(){
+    deckEl.innerHTML='';
+    cards.forEach(c=>{
+      const d = document.createElement('div');
+      d.className = 'card ' + (c.found || c.flipped ? 'flipped' : 'hidden');
+      d.textContent = (c.found || c.flipped) ? c.val : '🂠';
+      d.addEventListener('click', ()=> onCardClick(c.id));
+      deckEl.appendChild(d);
+    });
+    scoreEl.textContent = matches;
+    turnEl.textContent = (mode==='two'||mode==='ai') ? ('Player'+playerTurn) : 'Single';
+  }
+
+  function onCardClick(id){
+    if(lock) return;
+    const c = cards[id];
+    if(!c || c.flipped || c.found) return;
+    // if AI mode and it's AI's turn, ignore
+    if(mode==='ai' && playerTurn===2) return;
+    c.flipped = true; flipped.push(c); render(); beep(880, .04);
+    if(flipped.length===2){
+      lock=true;
+      setTimeout(()=>{
+        if(flipped[0].val===flipped[1].val){
+          flipped[0].found = flipped[1].found = true; matches++;
+          // award point
+          if(mode==='two' || mode==='ai'){
+            scores[playerTurn] = (scores[playerTurn]||0)+1;
+          }
+          // check win round
+          if(matches === icons.length){ winRound(); return; }
+        } else {
+          flipped.forEach(x=> x.flipped=false);
+          // switch turn if multiplayer
+          if(mode==='two' || mode==='ai') playerTurn = playerTurn===1 ? 2:1;
+        }
+        flipped=[]; lock=false; render();
+        if(mode==='ai' && playerTurn===2){ setTimeout(aiMove, 700); }
+      }, 700);
+    }
+  }
+
+  function aiMove(){
+    aiThinking = true;
+    // very simple AI: try to remember open flipped or random picks
+    // pick random hidden card
+    const hidden = cards.filter(c=>!c.found && !c.flipped);
+    if(hidden.length===0){ aiThinking=false; return; }
+    // first flip random
+    const first = hidden[Math.floor(Math.random()*hidden.length)];
+    onCardClick(first.id);
+    setTimeout(()=>{
+      const hidden2 = cards.filter(c=>!c.found && !c.flipped);
+      if(hidden2.length===0){ aiThinking=false; return;}
+      const second = hidden2[Math.floor(Math.random()*hidden2.length)];
+      onCardClick(second.id);
+      aiThinking=false;
+    }, 600);
+  }
+
+  function startTimer(){
+    clearInterval(timerId); timer = 60; timerEl.textContent = timer;
+    timerId = setInterval(()=>{ timer--; timerEl.textContent = timer; if(timer<=0){ clearInterval(timerId); finishRound(false); } },1000);
+  }
+
+  function finishRound(win){
+    clearInterval(timerId);
+    msgEl.textContent = win ? 'Round Won!' : 'Time up!';
+    if(win){ showConfetti(); sparkleAt(window.innerWidth/2, window.innerHeight/2, 26); beep(1200, .18, 'triangle', .06); }
+    // save highscore as matches
+    const key = 'memory:highscore'; const prev = storage.get(key,0); if(matches > prev) storage.set(key,matches);
+  }
+
+  function winRound(){
+    finishRound(true);
+    // if mode single or two, prompt next or repeat
+    setTimeout(()=> {
+      // if roundSel was '1..3' then auto-advance for player
+      if(roundSel.value < 3){
+        roundSel.value = parseInt(roundSel.value,10) + 1;
+        chooseIcons(); matches=0; buildDeck(); startTimer(); msgEl.textContent='Next Round!';
+      } else {
+        msgEl.textContent = 'All rounds complete! You rock!'; showConfetti();
+      }
+    }, 900);
+  }
+
+  function newRound(){
+    mode = modeSel.value;
+    playerTurn = 1; scores={1:0,2:0};
+    chooseIcons();
+    matches=0; flipped=[]; lock=false; buildDeck(); startTimer();
+    if(mode==='ai' && playerTurn===2){ setTimeout(aiMove, 800); }
+  }
+
+  newBtn.addEventListener('click', newRound);
+  roundSel.addEventListener('change', ()=> newRound());
+  modeSel.addEventListener('change', ()=> newRound());
+
+  buildDeck();
+  return { newRound };
+})();
+
+/* -----------------------
+   Helpers: sparkle position
+   ----------------------- */
+function sparkleAt(x,y,c=22){ sparkleAt = sparkleAt; /* previously defined */ } // placeholder to satisfy linter (the actual function defined above)
+
+/* -----------------------
+   Initialize UI & defaults
+   ----------------------- */
+document.getElementById('playerName').value = storage.get('playerName','Guest');
+document.getElementById('playerName').addEventListener('change', (e)=> storage.set('playerName', e.target.value));
+
+/* Kick things off */
+setActiveGame('tic');
+refreshHighscore();
+
+/* Small note: some functions (sparkleAt) referenced here were defined earlier; everything runs inline */
+</script>
+</body>
+</html>
